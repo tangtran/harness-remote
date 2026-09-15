@@ -238,7 +238,15 @@ export class AcpClient extends EventEmitter {
 
   async listSessionPage(cursor) {
     await this.start()
-    const result = await this.request("session/list", cursor ? { cursor } : {})
+    let result
+    try {
+      result = await this.request("session/list", cursor ? { cursor } : {})
+    } catch (error) {
+      // `session/list` is optional in ACP. Gemini CLI and Kiro CLI answer "Method not found"; for
+      // them the only Sessions to show are the ones this bridge created, which the service overlays.
+      if (error?.code === -32_601) return { sessions: [] }
+      throw error
+    }
     return {
       sessions: result.sessions ?? [],
       ...(typeof result.nextCursor === "string" && result.nextCursor ? { nextCursor: result.nextCursor } : {})
@@ -294,7 +302,7 @@ export class AcpClient extends EventEmitter {
       if (!pending) return
       clearTimeout(pending.timer)
       this.#pending.delete(message.id)
-      if (message.error) pending.reject(new Error(acpErrorMessage(message.error)))
+      if (message.error) pending.reject(Object.assign(new Error(acpErrorMessage(message.error)), { code: message.error.code }))
       else pending.resolve(message.result)
       return
     }

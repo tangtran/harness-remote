@@ -110,6 +110,22 @@ test("preserves ACP Session pagination and sends an opaque cursor unchanged", as
   client.close()
 })
 
+test("treats an adapter without session/list as having no native Sessions, but surfaces other list errors", async () => {
+  let listError = { code: -32601, message: "Method not found", data: "session/list" }
+  const client = new AcpClient({
+    spawnProcess: fakeSpawn((child, request) => {
+      respondToHandshake(child, request)
+      if (request.method === "session/list") child.respond({ jsonrpc: "2.0", id: request.id, error: listError })
+    })
+  })
+
+  assert.deepEqual(await client.listSessionPage(), { sessions: [] })
+  assert.deepEqual(await client.listSessions(), [])
+  listError = { code: -32603, message: "Internal error" }
+  await assert.rejects(client.listSessions(), (error) => error.code === -32603 && /Internal error/.test(error.message))
+  client.close()
+})
+
 test("launches an ACP adapter with the configured command and arguments", async () => {
   const calls = []
   const client = new AcpClient({

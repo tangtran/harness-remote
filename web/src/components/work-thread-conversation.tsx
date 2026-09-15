@@ -48,7 +48,11 @@ const HARNESS_ICON_FILES: Record<string, string> = {
   claude: "claude.svg",
   opencode: "opencode.svg",
   omp: "omp.svg",
-  pi: "pi.svg"
+  pi: "pi.svg",
+  gemini: "gemini.svg",
+  kiro: "kiro.svg",
+  hermes: "hermes.svg",
+  dsh: "dsh.svg"
 }
 
 type SessionTarget = {
@@ -125,6 +129,7 @@ function assistantMessageHasSignal(message: WorkThreadMessage): boolean {
 
 function supportedBackend(value: string, fallback: BackendKind): BackendKind {
   return value === "opencode" || value === "omp" || value === "pi" || value === "claude" || value === "codex"
+    || value === "gemini" || value === "kiro" || value === "hermes" || value === "dsh"
     ? value
     : fallback
 }

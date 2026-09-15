@@ -20,6 +20,17 @@ test("detects OpenCode as a managed direct-HTTP backend", () => {
   assert.equal(resolveBackend([], ["opencode"]), "opencode")
 })
 
+test("detects native ACP CLIs by executable name and keeps existing backends as daemon primary", () => {
+  const existing = new Set(["gemini", "kiro-cli", "hermes", "dsh"].map((name) => path.join("/tools", name)))
+  const detected = detectBackends({ pathValue: "/tools", platform: "linux", exists: (candidate) => existing.has(candidate), access: () => {} })
+  assert.deepEqual(detected, ["gemini", "kiro", "hermes", "dsh"])
+
+  assert.equal(resolveLaunchPlan([], detected).mode, "daemon")
+  assert.equal(resolveLaunchPlan([], detected).backend, "gemini")
+  assert.equal(resolveLaunchPlan(["--backend", "dsh"], detected).backend, "dsh")
+  assert.equal(resolveLaunchPlan([], ["claude", ...detected]).backend, "claude")
+})
+
 test("delegates OpenCode startup to the managed host", async () => {
   let options
   class FakeHost { constructor(value) { options = value } async start() { this.started = true } }

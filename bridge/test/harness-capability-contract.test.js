@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { acpHarnessCapabilityContract, openCodeCapabilityContract } from "../src/harness-capability-contract.js"
-import { harnessProfile } from "../src/harness-profiles.js"
+import { harnessProfile, resolveAcpLaunch } from "../src/harness-profiles.js"
 
 test("ACP capability contract preserves runtime-specific model controls without inventing them", () => {
   const omp = acpHarnessCapabilityContract(harnessProfile("omp"))
@@ -24,6 +24,32 @@ test("ACP capability contract preserves runtime-specific model controls without 
   assert.ok(codex.models.variantConfigIDs.some((id) => ["reasoning_effort", "reasoningEffort"].includes(id)))
   assert.deepEqual(claude.models.variantConfigIDs, [])
   assert.equal(claude.models.variants, "runtime-advertised-only")
+})
+
+test("Native ACP harnesses without a bridge adapter package get the generic session-load contract", () => {
+  const launches = {
+    gemini: ["--acp"],
+    kiro: ["acp"],
+    hermes: ["acp"],
+    dsh: ["--profile", "acp"]
+  }
+  for (const [id, args] of Object.entries(launches)) {
+    const profile = harnessProfile(id)
+    assert.equal(profile.id, id)
+    assert.deepEqual(resolveAcpLaunch(profile, { find: () => null }).args, args)
+    const contract = acpHarnessCapabilityContract(profile)
+    assert.equal(contract.protocol, "acp")
+    assert.equal(contract.sessions.discovery, "native-list")
+    assert.equal(contract.sessions.transcript, "session-load")
+    assert.equal(contract.sessions.stop, "owned-session-native-cancel")
+  }
+
+  assert.equal(harnessProfile("gemini").authMethod, "gemini-api-key")
+  assert.equal(harnessProfile("hermes").authMethod, "custom")
+  // Only DSH exposes models as ACP config options; the others use the unstable `models` field.
+  assert.equal(harnessProfile("dsh").capabilities.models, true)
+  assert.deepEqual(acpHarnessCapabilityContract(harnessProfile("dsh")).models.variantConfigIDs, ["reasoning_effort"])
+  for (const id of ["gemini", "kiro", "hermes"]) assert.equal(harnessProfile(id).capabilities.models, false)
 })
 
 test("Session-first contract separates discovery, transcript reads and writer acquisition per ACP harness", () => {

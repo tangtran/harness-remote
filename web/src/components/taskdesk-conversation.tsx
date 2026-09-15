@@ -12,7 +12,11 @@ const HARNESS_ICON_FILES: Record<string, string> = {
   claude: "claude.svg",
   opencode: "opencode.svg",
   omp: "omp.svg",
-  pi: "pi.svg"
+  pi: "pi.svg",
+  gemini: "gemini.svg",
+  kiro: "kiro.svg",
+  hermes: "hermes.svg",
+  dsh: "dsh.svg"
 }
 
 function harnessIconUrl(backend: string | undefined): string | undefined {

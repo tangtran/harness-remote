@@ -166,6 +166,89 @@ export const HARNESS_PROFILES = {
       sessionRename: true,
       sessionDelete: true
     }
+  },
+  gemini: {
+    id: "gemini",
+    label: "Gemini CLI",
+    // Gemini CLI speaks ACP natively (`gemini --acp`), so there is no separate adapter package. The
+    // npm shim is a .cmd on Windows, which the ACP client only routes through cmd.exe when named.
+    command: process.platform === "win32" ? "gemini.cmd" : "gemini",
+    args: ["--acp"],
+    permissionMode: "allow",
+    // Gemini lists `oauth-personal` first; picking it on a machine configured for an API key fails
+    // at authentication. The key itself stays in Gemini's own settings/environment.
+    authMethod: "gemini-api-key",
+    reloadOnHistoryRefresh: false,
+    modelVariantConfigIDs: [],
+    capabilities: {
+      ...COMMON_CAPABILITIES,
+      // Gemini 0.59 advertises models through the unstable `models` session field rather than a
+      // `model` config option, which is the only model source this bridge reads.
+      models: false,
+      // Slash commands arrive as standard `available_commands_update` notifications. Plan updates
+      // were not observed on a real run, so todos stay off until they are.
+      todos: false,
+      commands: true,
+      actions: false
+    }
+  },
+  kiro: {
+    id: "kiro",
+    label: "Kiro CLI",
+    command: "kiro-cli",
+    args: ["acp"],
+    permissionMode: "allow",
+    reloadOnHistoryRefresh: false,
+    modelVariantConfigIDs: [],
+    capabilities: {
+      ...COMMON_CAPABILITIES,
+      // Like Gemini, Kiro 2.21 exposes models only through the unstable `models` session field.
+      models: false,
+      todos: false,
+      // Kiro publishes its commands through the vendor `_kiro.dev/commands/available` extension, not
+      // the standard `available_commands_update` this bridge reads.
+      commands: false,
+      actions: false
+    }
+  },
+  hermes: {
+    id: "hermes",
+    label: "Hermes Agent",
+    command: "hermes",
+    args: ["acp"],
+    permissionMode: "allow",
+    // `custom` uses the runtime credentials Hermes is already configured with; the alternative,
+    // `hermes-setup`, is an interactive terminal flow a headless bridge cannot drive.
+    authMethod: "custom",
+    reloadOnHistoryRefresh: false,
+    modelVariantConfigIDs: [],
+    capabilities: {
+      ...COMMON_CAPABILITIES,
+      // Hermes 0.21 exposes models only through the unstable `models` session field.
+      models: false,
+      todos: false,
+      commands: true,
+      actions: false
+    }
+  },
+  dsh: {
+    id: "dsh",
+    label: "DeepSeek Harness",
+    // DeepSeek Harness ships its ACP server as a boot profile of the main binary.
+    command: process.platform === "win32" ? "dsh.cmd" : "dsh",
+    args: ["--profile", "acp"],
+    permissionMode: "allow",
+    reloadOnHistoryRefresh: false,
+    // DSH advertises `model` and `reasoning_effort` as real ACP config options.
+    modelVariantConfigIDs: ["reasoning_effort"],
+    capabilities: {
+      ...COMMON_CAPABILITIES,
+      models: true,
+      // No plan or `available_commands_update` notifications were observed on a real run.
+      todos: false,
+      commands: false,
+      actions: false
+    }
   }
 }
 

@@ -217,6 +217,10 @@ type TranslationKey =
   | 'connect.harness.pi'
   | 'connect.harness.claude'
   | 'connect.harness.codex'
+  | 'connect.harness.gemini'
+  | 'connect.harness.kiro'
+  | 'connect.harness.hermes'
+  | 'connect.harness.dsh'
   | 'connect.addressHint'
   | 'connect.runOnHost'
   | 'connect.copyCommand'
@@ -755,6 +759,10 @@ const translations: Record<LanguageCode, Partial<Record<TranslationKey, string>>
     'connect.harness.pi': 'Connect to PI through the ACP bridge.',
     'connect.harness.claude': 'Connect to Claude Code through the ACP bridge.',
     'connect.harness.codex': 'Connect to Codex CLI through the ACP bridge.',
+    'connect.harness.gemini': 'Connect to Gemini CLI through the ACP bridge.',
+    'connect.harness.kiro': 'Connect to Kiro CLI through the ACP bridge.',
+    'connect.harness.hermes': 'Connect to Hermes Agent through the ACP bridge.',
+    'connect.harness.dsh': 'Connect to DeepSeek Harness through the ACP bridge.',
     'connect.addressHint': 'Use the LAN address of the machine that runs the harness.',
     'connect.runOnHost': 'Run on the host machine',
     'connect.copyCommand': 'Copy command',
@@ -1226,6 +1234,10 @@ const translations: Record<LanguageCode, Partial<Record<TranslationKey, string>>
     'connect.harness.pi': 'Connessione a PI tramite bridge ACP.',
     'connect.harness.claude': 'Connessione a Claude Code tramite bridge ACP.',
     'connect.harness.codex': 'Connessione a Codex CLI tramite bridge ACP.',
+    'connect.harness.gemini': 'Connessione a Gemini CLI tramite bridge ACP.',
+    'connect.harness.kiro': 'Connessione a Kiro CLI tramite bridge ACP.',
+    'connect.harness.hermes': 'Connessione a Hermes Agent tramite bridge ACP.',
+    'connect.harness.dsh': 'Connessione a DeepSeek Harness tramite bridge ACP.',
     'connect.addressHint': 'Usa l’indirizzo LAN del computer che esegue l’harness.',
     'connect.runOnHost': 'Esegui sul computer host',
     'connect.copyCommand': 'Copia comando',
@@ -2050,6 +2062,10 @@ const translations: Record<LanguageCode, Partial<Record<TranslationKey, string>>
     'connect.harness.pi': '通过 ACP 桥接器连接到 PI。',
     'connect.harness.claude': '通过 ACP 桥接器连接到 Claude Code。',
     'connect.harness.codex': '通过 ACP 桥接器连接到 Codex CLI。',
+    'connect.harness.gemini': '通过 ACP 桥接器连接到 Gemini CLI。',
+    'connect.harness.kiro': '通过 ACP 桥接器连接到 Kiro CLI。',
+    'connect.harness.hermes': '通过 ACP 桥接器连接到 Hermes Agent。',
+    'connect.harness.dsh': '通过 ACP 桥接器连接到 DeepSeek Harness。',
     'connect.addressHint': '请使用运行 harness 的电脑的局域网地址。',
     'connect.runOnHost': '在主机上运行',
     'connect.copyCommand': '复制命令',

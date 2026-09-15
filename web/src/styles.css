@@ -63,6 +63,18 @@
   --harness-codex: #047857;
   --harness-codex-soft: #e2f5ec;
   --harness-codex-border: #c1e9d5;
+  --harness-gemini: #1d4ed8;
+  --harness-gemini-soft: #e1eafe;
+  --harness-gemini-border: #bcd0fb;
+  --harness-kiro: #be123c;
+  --harness-kiro-soft: #fbe3ea;
+  --harness-kiro-border: #f5c2d2;
+  --harness-hermes: #4338ca;
+  --harness-hermes-soft: #e8e6fb;
+  --harness-hermes-border: #cac4f5;
+  --harness-dsh: #4d7c0f;
+  --harness-dsh-soft: #e8f3d9;
+  --harness-dsh-border: #cde7ae;
 
   --focus-ring: rgba(47, 102, 245, 0.34);
   --selection: rgba(47, 102, 245, 0.18);
@@ -168,6 +180,18 @@
   --harness-codex: #34d399;
   --harness-codex-soft: rgba(4, 120, 87, 0.24);
   --harness-codex-border: rgba(52, 211, 153, 0.32);
+  --harness-gemini: #93c5fd;
+  --harness-gemini-soft: rgba(29, 78, 216, 0.24);
+  --harness-gemini-border: rgba(147, 197, 253, 0.34);
+  --harness-kiro: #fb7185;
+  --harness-kiro-soft: rgba(190, 18, 60, 0.24);
+  --harness-kiro-border: rgba(251, 113, 133, 0.34);
+  --harness-hermes: #a5b4fc;
+  --harness-hermes-soft: rgba(67, 56, 202, 0.24);
+  --harness-hermes-border: rgba(165, 180, 252, 0.34);
+  --harness-dsh: #bef264;
+  --harness-dsh-soft: rgba(77, 124, 15, 0.24);
+  --harness-dsh-border: rgba(190, 242, 100, 0.34);
 
   --focus-ring: rgba(126, 166, 255, 0.4);
   --selection: rgba(126, 166, 255, 0.22);
