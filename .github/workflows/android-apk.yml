@@ -66,6 +66,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          # The action's default `tools platform-tools` fails: the legacy `tools` package is gone from
+          # the SDK repository. The next step installs everything this build needs.
+          packages: ""
 
       - name: Install Android 36 SDK packages
         run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
