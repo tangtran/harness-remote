@@ -33,6 +33,10 @@ class RecordingAcp {
   }
   async request(method, params) {
     this.calls.push([method, params?.configId ?? null, params?.value ?? null])
+    if (this.legacyModels && (method === "session/load" || method === "session/new")) {
+      return { sessionId: "s1", models: { currentModelId: this.currentModel, availableModels: this.models.map((modelId) => ({ modelId, name: modelId })) } }
+    }
+    if (method === "session/set_model") this.currentModel = params.modelId
     if (method === "session/load" || method === "session/new") return { sessionId: "s1", configOptions: this.#configOptions() }
     if (method === "session/set_config_option") return { configOptions: this.#configOptions() }
     if (method === "session/prompt") {
@@ -63,6 +67,27 @@ test("setModel resolves a model picked from a grouped option to its opaque adver
     ["local", "[\"local\",\"qwen\"]"],
     ["openrouter", "[\"openrouter\",\"z-ai/glm-5.3-flash\"]"]
   ])
+})
+
+test("a harness that publishes the older `models` field is listed and switched with session/set_model", async () => {
+  const acp = new RecordingAcp({ models: ["auto", "gemini-2.5-pro", "openrouter:anthropic/claude-opus-5"] })
+  acp.legacyModels = true
+  const service = new AcpService(acp, {})
+  const listed = await service.models("s1")
+  assert.deepEqual(listed.map((model) => [model.value, model.currentValue]), [["auto", true], ["gemini-2.5-pro", false], ["openrouter:anthropic/claude-opus-5", false]])
+
+  await service.setModel("s1", "gemini/gemini-2.5-pro")
+  assert.deepEqual(acp.calls.filter(([method]) => method.startsWith("session/set_")).map(([method]) => method), ["session/set_model"])
+  assert.equal(acp.currentModel, "gemini-2.5-pro")
+  assert.deepEqual((await service.models("s1")).find((model) => model.currentValue)?.value, "gemini-2.5-pro")
+
+  // Continuing on the model the Session already holds sends nothing.
+  await service.setModel("s1", "gemini/gemini-2.5-pro")
+  assert.equal(acp.calls.filter(([method]) => method === "session/set_model").length, 1)
+
+  // The app addresses an opaque id under the agent's own provider.
+  await service.setModel("s1", "hermes/openrouter:anthropic/claude-opus-5")
+  assert.equal(acp.currentModel, "openrouter:anthropic/claude-opus-5")
 })
 
 test("setModel applies the model before its harness-advertised variant", async () => {

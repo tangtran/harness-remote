@@ -182,9 +182,9 @@ export const HARNESS_PROFILES = {
     modelVariantConfigIDs: [],
     capabilities: {
       ...COMMON_CAPABILITIES,
-      // Gemini 0.59 advertises models through the unstable `models` session field rather than a
-      // `model` config option, which is the only model source this bridge reads.
-      models: false,
+      // Gemini 0.59 advertises models through ACP's older `models` session field and switches them
+      // with `session/set_model`; acpConfigOptions presents that list as the `model` option.
+      models: true,
       // Slash commands arrive as standard `available_commands_update` notifications. Plan updates
       // were not observed on a real run, so todos stay off until they are.
       todos: false,
@@ -202,8 +202,8 @@ export const HARNESS_PROFILES = {
     modelVariantConfigIDs: [],
     capabilities: {
       ...COMMON_CAPABILITIES,
-      // Like Gemini, Kiro 2.21 exposes models only through the unstable `models` session field.
-      models: false,
+      // Like Gemini, Kiro 2.21 exposes models only through the older `models` session field.
+      models: true,
       todos: false,
       // Kiro publishes its commands through the vendor `_kiro.dev/commands/available` extension, not
       // the standard `available_commands_update` this bridge reads.
@@ -224,8 +224,8 @@ export const HARNESS_PROFILES = {
     modelVariantConfigIDs: [],
     capabilities: {
       ...COMMON_CAPABILITIES,
-      // Hermes 0.21 exposes models only through the unstable `models` session field.
-      models: false,
+      // Hermes 0.21 exposes models only through the older `models` session field.
+      models: true,
       todos: false,
       commands: true,
       actions: false

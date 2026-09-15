@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import test from "node:test"
 import {
+  acpConfigOptions,
   AcpAgentModelCatalog,
   HttpAgentModelCatalog,
   modelsFromConfigOptions,
@@ -67,6 +68,25 @@ test("Claude catalog preserves the 1M suffix when it distinguishes two advertise
 
   assert.deepEqual(models.map((model) => model.modelID), ["claude-sonnet-5", "claude-sonnet-5[1m]"])
   assert.equal(models.at(-1).isDefault, true)
+})
+
+test("ACP catalog presents the older `models` session field as the model option", () => {
+  const options = acpConfigOptions({
+    sessionId: "s1",
+    models: { currentModelId: "auto", availableModels: [{ modelId: "auto", name: "Auto" }, { modelId: "claude-sonnet-4.5", name: "claude-sonnet-4.5", description: "Sonnet" }] }
+  })
+  assert.equal(options[0].setMethod, "session/set_model")
+  assert.deepEqual(modelsFromConfigOptions(options, "kiro").map((model) => [model.providerID, model.modelID, model.modelName, model.isDefault]), [
+    ["kiro", "auto", "Auto", true],
+    ["kiro", "claude-sonnet-4.5", "claude-sonnet-4.5", false]
+  ])
+  // Older-field ids are opaque: a slash inside one is not a provider separator.
+  const hermes = acpConfigOptions({ models: { currentModelId: "custom:qwen", availableModels: [{ modelId: "openrouter:anthropic/claude-opus-5", name: "OpenRouter · anthropic/claude-opus-5" }] } })
+  assert.deepEqual(modelsFromConfigOptions(hermes, "hermes").map((model) => [model.providerID, model.modelID]), [["hermes", "openrouter:anthropic/claude-opus-5"]])
+  // A real `model` config option always wins over the older field.
+  const real = [{ id: "model", currentValue: "a", options: [{ value: "a" }] }]
+  assert.equal(acpConfigOptions({ configOptions: real, models: { availableModels: [{ modelId: "b" }] } }), real)
+  assert.equal(acpConfigOptions({ sessionId: "s1" }), undefined)
 })
 
 test("ACP catalog reads grouped select options and takes the provider from the group, not the opaque value", () => {

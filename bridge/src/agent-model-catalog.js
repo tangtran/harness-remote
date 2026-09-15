@@ -36,8 +36,35 @@ export function configSelectCandidates(option) {
     : [entry])
 }
 
+/**
+ * Config options from a session/new, session/load or session/resume result. Gemini CLI, Kiro CLI
+ * and Hermes publish models only through ACP's older `models` field and switch them with
+ * `session/set_model`; that list is presented as the `model` option every consumer already reads,
+ * marked so setModel knows which request the harness understands.
+ */
+export function acpConfigOptions(result) {
+  const configOptions = Array.isArray(result?.configOptions) ? result.configOptions : undefined
+  const legacy = result?.models
+  if (configOptions?.some((item) => item?.id === "model") || !Array.isArray(legacy?.availableModels)) return configOptions
+  return [
+    ...(configOptions ?? []),
+    {
+      id: "model",
+      category: "model",
+      type: "select",
+      setMethod: "session/set_model",
+      currentValue: legacy.currentModelId,
+      options: legacy.availableModels
+        .filter((model) => typeof model?.modelId === "string" && model.modelId)
+        // Ids here are opaque (Hermes: `openrouter:anthropic/claude-opus-5`), not `provider/model`.
+        .map((model) => ({ value: model.modelId, name: model.name || model.modelId, description: model.description || undefined, opaqueValue: true }))
+    }
+  ]
+}
+
 export function acpModelIdentity(value, candidate, fallbackProviderID) {
   if (typeof candidate?.group === "string" && candidate.group) return { providerID: candidate.group, modelID: value }
+  if (candidate?.opaqueValue === true) return { providerID: fallbackProviderID, modelID: value }
   return splitModelValue(value, fallbackProviderID)
 }
 
@@ -310,7 +337,7 @@ export class AcpAgentModelCatalog extends CachedCatalog {
     this.sessionID = created.sessionId
     this.hiddenSessionIDs.add(created.sessionId)
     await this.#saveState()
-    return created.configOptions
+    return acpConfigOptions(created)
   }
 
   async #refreshOptions(deadline) {

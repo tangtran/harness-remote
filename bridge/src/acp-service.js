@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { configSelectCandidates, selectableAcpModelValue } from "./agent-model-catalog.js"
+import { acpConfigOptions, configSelectCandidates, selectableAcpModelValue } from "./agent-model-catalog.js"
 import { TranscriptCache } from "./transcript-cache.js"
 import {
   listExtensionActions,
@@ -596,7 +596,7 @@ export class AcpService {
     await this.#acp.start()
     const result = await this.#acp.request("session/new", { cwd: directory, mcpServers: [] })
     this.#acpOpenSessions.add(result.sessionId)
-    this.#rememberConfigOptions(result.sessionId, result.configOptions)
+    this.#rememberConfigOptions(result.sessionId, acpConfigOptions(result))
     const session = {
       sessionId: result.sessionId,
       cwd: directory,
@@ -1157,6 +1157,12 @@ export class AcpService {
     // made every prompt mutate the Session's configuration, which a harness is entitled to journal
     // and to announce - so simply carrying on read as though the user had switched models.
     if (option?.currentValue === value) {
+      await this.#setModelVariant(sessionID, variant)
+      return
+    }
+    if (option?.setMethod === "session/set_model") {
+      await this.#acp.request("session/set_model", { sessionId: sessionID, modelId: value })
+      option.currentValue = value
       await this.#setModelVariant(sessionID, variant)
       return
     }
@@ -1721,7 +1727,7 @@ export class AcpService {
       if (this.#replaySettleMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, this.#replaySettleMs))
       }
-      this.#rememberConfigOptions(sessionID, result.configOptions)
+      this.#rememberConfigOptions(sessionID, acpConfigOptions(result))
       const replayedMessages = mergeFragmentedPiSnapshot(this.#messages.get(sessionID) ?? [])
       this.#messages.set(sessionID, replaceHistory ? replayedMessages : mergeReplay(previousMessages, replayedMessages))
       // Replayed history is finished work by definition, and the adapter does not always close the
@@ -1779,7 +1785,7 @@ export class AcpService {
       300_000
     )
     this.#acpOpenSessions.add(sessionID)
-    this.#rememberConfigOptions(sessionID, result?.configOptions)
+    this.#rememberConfigOptions(sessionID, acpConfigOptions(result))
     this.#loaded.add(sessionID)
     this.#persistSnapshot(sessionID)
     return true

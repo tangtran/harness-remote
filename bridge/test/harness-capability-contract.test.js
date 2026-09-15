@@ -46,10 +46,9 @@ test("Native ACP harnesses without a bridge adapter package get the generic sess
 
   assert.equal(harnessProfile("gemini").authMethod, "gemini-api-key")
   assert.equal(harnessProfile("hermes").authMethod, "custom")
-  // Only DSH exposes models as ACP config options; the others use the unstable `models` field.
-  assert.equal(harnessProfile("dsh").capabilities.models, true)
+  // DSH exposes models as ACP config options; the others through the older `models` field.
+  for (const id of ["gemini", "kiro", "hermes", "dsh"]) assert.equal(harnessProfile(id).capabilities.models, true)
   assert.deepEqual(acpHarnessCapabilityContract(harnessProfile("dsh")).models.variantConfigIDs, ["reasoning_effort"])
-  for (const id of ["gemini", "kiro", "hermes"]) assert.equal(harnessProfile(id).capabilities.models, false)
 })
 
 test("Session-first contract separates discovery, transcript reads and writer acquisition per ACP harness", () => {
