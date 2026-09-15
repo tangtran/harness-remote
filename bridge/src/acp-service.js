@@ -441,6 +441,9 @@ export class AcpService {
   #deletedSessions = new Set()
   #deletedSessionIndexLoaded = false
   #deletedSessionIndexWrite = Promise.resolve()
+  #localSessionIndex = new Map()
+  #localSessionIndexLoad
+  #localSessionIndexWrite = Promise.resolve()
   #queues = new Map()
   #active = new Set()
   #listeners = new Set()
@@ -1451,6 +1454,68 @@ export class AcpService {
     await writing
   }
 
+  /**
+   * Listing metadata for Sessions this bridge created on an adapter that has no `session/list`.
+   *
+   * Gemini CLI and Kiro CLI can reopen a Session with session/load but cannot enumerate them, so
+   * without this index every Session they own vanished from the rail on the next daemon restart.
+   * Only index metadata is kept here; transcripts stay in the per-Session snapshots.
+   */
+  async localSessionIndex() {
+    if (!this.#snapshotDirectory) return []
+    await this.#loadLocalSessionIndex()
+    return [...this.#localSessionIndex.values()]
+  }
+
+  #localSessionIndexPath() {
+    return path.join(this.#snapshotDirectory, "local-session-index.json")
+  }
+
+  #loadLocalSessionIndex() {
+    this.#localSessionIndexLoad ??= readFile(this.#localSessionIndexPath(), "utf8").then((text) => {
+      const state = JSON.parse(text)
+      if (state?.version !== 1 || !Array.isArray(state.sessions)) return
+      for (const entry of state.sessions) {
+        if (typeof entry?.sessionId === "string" && entry.sessionId && typeof entry.cwd === "string" && !this.#localSessionIndex.has(entry.sessionId)) {
+          this.#localSessionIndex.set(entry.sessionId, entry)
+        }
+      }
+    }).catch((error) => {
+      if (error?.code === "ENOENT") return
+      // Like the deleted-session index: surface an unreadable file and retry on the next read.
+      this.#localSessionIndexLoad = undefined
+      throw error
+    })
+    return this.#localSessionIndexLoad
+  }
+
+  #indexLocalSession(sessionID) {
+    // Only for an adapter that has answered session/list with "Method not found". The Session rail
+    // lists before anything is created, and every later snapshot write re-indexes the Session.
+    if (!this.#snapshotDirectory || this.#acp.sessionListUnsupported !== true) return
+    const session = this.#sessions.get(sessionID)
+    if (!session?.cwd) return
+    const entry = {
+      sessionId: sessionID,
+      cwd: session.cwd,
+      ...(this.#titleFor(sessionID) ? { title: this.#titleFor(sessionID) } : {}),
+      updatedAt: session.updatedAt
+    }
+    const previous = this.#localSessionIndex.get(sessionID)
+    if (previous && previous.cwd === entry.cwd && previous.title === entry.title && previous.updatedAt === entry.updatedAt) return
+    this.#localSessionIndex.set(sessionID, entry)
+    this.#localSessionIndexWrite = this.#localSessionIndexWrite.catch(() => undefined).then(async () => {
+      await this.#loadLocalSessionIndex()
+      await this.#withFsTimeout(mkdir(this.#snapshotDirectory, { recursive: true }))
+      const target = this.#localSessionIndexPath()
+      const temporary = `${target}.${process.pid}.${randomUUID()}.tmp`
+      await this.#withFsTimeout(writeFile(temporary, JSON.stringify({ version: 1, sessions: [...this.#localSessionIndex.values()] }), { mode: 0o600 }))
+      await this.#withFsTimeout(rename(temporary, target))
+    }).catch((error) => {
+      this.#emit("session.error", sessionID, { message: `Local session index could not be saved: ${error.message}` })
+    })
+  }
+
   #snapshotPath(sessionID) {
     const name = Buffer.from(sessionID).toString("base64url")
     return path.join(this.#snapshotDirectory, `${name}.json`)
@@ -1504,6 +1569,7 @@ export class AcpService {
 
   #persistSnapshot(sessionID) {
     if (!this.#snapshotDirectory) return
+    this.#indexLocalSession(sessionID)
     this.#dirtySnapshots.add(sessionID)
     this.#dirtyStart.set(sessionID, Date.now())
     if (this.#snapshotWrites.has(sessionID)) return
@@ -1793,7 +1859,8 @@ export class AcpService {
 
   async #refreshSessions() {
     if (!this.#sessionListing) {
-      this.#sessionListing = this.#acp.listSessions().then((sessions) => {
+      this.#sessionListing = this.#acp.listSessions().then(async (native) => {
+        const sessions = this.#acp.sessionListUnsupported ? await this.localSessionIndex() : native
         const listed = new Set(sessions.map((session) => session.sessionId))
         const refreshed = this.rememberListedSessions(sessions)
         for (const [sessionID, session] of this.#sessions) {

@@ -34,6 +34,7 @@ export class AcpClient extends EventEmitter {
   #agentInfo
   #promptCapabilities = {}
   #sessionCapabilities = {}
+  #sessionListUnsupported = false
   #stderr = ""
   #stderrPartial = ""
 
@@ -68,6 +69,11 @@ export class AcpClient extends EventEmitter {
    */
   get sessionCapabilities() {
     return this.#sessionCapabilities
+  }
+
+  /** True once the adapter answered `session/list` with "Method not found" (Gemini CLI, Kiro CLI). */
+  get sessionListUnsupported() {
+    return this.#sessionListUnsupported
   }
 
   /** PID identifies extension runtime state published by this exact ACP process. */
@@ -243,8 +249,11 @@ export class AcpClient extends EventEmitter {
       result = await this.request("session/list", cursor ? { cursor } : {})
     } catch (error) {
       // `session/list` is optional in ACP. Gemini CLI and Kiro CLI answer "Method not found"; for
-      // them the only Sessions to show are the ones this bridge created, which the service overlays.
-      if (error?.code === -32_601) return { sessions: [] }
+      // them the only Sessions to show are the ones this bridge created, which the service indexes.
+      if (error?.code === -32_601) {
+        this.#sessionListUnsupported = true
+        return { sessions: [] }
+      }
       throw error
     }
     return {

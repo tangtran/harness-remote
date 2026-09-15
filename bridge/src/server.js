@@ -228,7 +228,7 @@ export function createBridgeServer({ config, acp, serviceOptions, machineRegistr
   // its transcript. Invalid or missing harness timestamps stay at zero instead of pretending to be
   // freshly updated on every poll.
   const listVisibleSessionMetadata = async (directory, cursor) => {
-    const [page, deletedSessionIDs] = await Promise.all([
+    let [page, deletedSessionIDs] = await Promise.all([
       typeof acp.listSessionPage === "function"
         ? acp.listSessionPage(cursor)
         : cursor
@@ -236,6 +236,8 @@ export function createBridgeServer({ config, acp, serviceOptions, machineRegistr
           : acp.listSessions().then((sessions) => ({ sessions })),
       service.deletedSessionIDs()
     ])
+    // An adapter without session/list only has the Sessions this bridge created and indexed.
+    if (acp.sessionListUnsupported && !cursor) page = { sessions: await service.localSessionIndex() }
     service.rememberListedSessions(page.sessions)
     const visible = new Map(
       page.sessions

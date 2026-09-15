@@ -38,6 +38,7 @@ export class AcpPromptEchoFilter extends EventEmitter {
 
   get promptCapabilities() { return this.#acp.promptCapabilities }
   get sessionCapabilities() { return this.#acp.sessionCapabilities }
+  get sessionListUnsupported() { return this.#acp.sessionListUnsupported }
   get agentInfo() { return this.#acp.agentInfo }
   get processID() { return this.#acp.processID }
 
