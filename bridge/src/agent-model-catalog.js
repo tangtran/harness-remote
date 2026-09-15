@@ -24,6 +24,23 @@ function splitModelValue(value, fallbackProviderID) {
     : { providerID: fallbackProviderID, modelID: value }
 }
 
+/**
+ * An ACP select option lists either values or named groups of values. DeepSeek Harness groups its
+ * models by provider route, and its values are opaque (`["local","model"]`), so a grouped candidate
+ * carries its group as the provider instead of having one parsed out of the value.
+ */
+export function configSelectCandidates(option) {
+  if (!Array.isArray(option?.options)) return []
+  return option.options.flatMap((entry) => Array.isArray(entry?.options)
+    ? entry.options.map((candidate) => ({ ...candidate, group: entry.group, groupName: entry.name }))
+    : [entry])
+}
+
+export function acpModelIdentity(value, candidate, fallbackProviderID) {
+  if (typeof candidate?.group === "string" && candidate.group) return { providerID: candidate.group, modelID: value }
+  return splitModelValue(value, fallbackProviderID)
+}
+
 function finiteNumber(value) {
   return Number.isFinite(value) ? Number(value) : undefined
 }
@@ -76,7 +93,7 @@ export function selectableAcpModelValue(value, option, providerID) {
   // even though session/set_config_option accepts and canonicalizes the undecorated id. The bare
   // form also round-trips through older Sessions. If both rows exist, however, the suffix carries
   // real picker meaning and must remain so the two selectable context lanes do not collapse.
-  const hasBareSibling = option?.options?.some((candidate) =>
+  const hasBareSibling = configSelectCandidates(option).some((candidate) =>
     typeof candidate?.value === "string" && candidate.value.toLowerCase() === bare.toLowerCase()
   )
   return hasBareSibling ? value : bare
@@ -85,11 +102,11 @@ export function selectableAcpModelValue(value, option, providerID) {
 function modelFromConfigCandidate(candidate, option, fallbackProviderID) {
   if (typeof candidate?.value !== "string" || !candidate.value || candidate.disabled === true) return undefined
   const selectableValue = selectableAcpModelValue(candidate.value, option, fallbackProviderID)
-  const { providerID, modelID } = splitModelValue(selectableValue, fallbackProviderID)
+  const { providerID, modelID } = acpModelIdentity(selectableValue, candidate, fallbackProviderID)
   if (!providerID || !modelID) return undefined
   return {
     providerID,
-    providerName: candidate.providerName || providerID,
+    providerName: candidate.providerName || candidate.groupName || providerID,
     modelID,
     modelName: candidate.name ?? modelID,
     description: candidate.description || undefined,
@@ -102,7 +119,7 @@ function modelFromConfigCandidate(candidate, option, fallbackProviderID) {
 export function modelsFromConfigOptions(configOptions, fallbackProviderID) {
   const option = configOptions?.find((item) => item?.id === "model")
   if (!option || !Array.isArray(option.options)) return []
-  return dedupeModels(option.options.flatMap((candidate) => {
+  return dedupeModels(configSelectCandidates(option).flatMap((candidate) => {
     const model = modelFromConfigCandidate(candidate, option, fallbackProviderID)
     return model ? [model] : []
   }))
@@ -317,7 +334,7 @@ export class AcpAgentModelCatalog extends CachedCatalog {
       return baseModels
     }
 
-    const candidates = modelOption.options.filter((candidate) => modelFromConfigCandidate(candidate, modelOption, this.agentID))
+    const candidates = configSelectCandidates(modelOption).filter((candidate) => modelFromConfigCandidate(candidate, modelOption, this.agentID))
     const originalModel = modelOption.currentValue
     const ordered = [...candidates].sort((left, right) => {
       if (left?.value === originalModel) return -1
@@ -358,7 +375,7 @@ export class AcpAgentModelCatalog extends CachedCatalog {
         .map((id) => effectiveOptions?.find((item) => item?.id === id))
         .find((option) => option && Array.isArray(option.options))
       if (variantOption) {
-        for (const candidate of variantOption.options) {
+        for (const candidate of configSelectCandidates(variantOption)) {
           if (typeof candidate?.value !== "string" || !candidate.value || candidate.disabled === true) continue
           variants.push({
             ...base,

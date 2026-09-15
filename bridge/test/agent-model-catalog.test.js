@@ -69,6 +69,22 @@ test("Claude catalog preserves the 1M suffix when it distinguishes two advertise
   assert.equal(models.at(-1).isDefault, true)
 })
 
+test("ACP catalog reads grouped select options and takes the provider from the group, not the opaque value", () => {
+  const models = modelsFromConfigOptions([{
+    id: "model",
+    currentValue: "[\"local\",\"Qwen3.6.gguf\"]",
+    options: [
+      { group: "openrouter", name: "openrouter", options: [{ value: "[\"openrouter\",\"z-ai/glm-5.3-flash\"]", name: "GLM 5.3 Flash" }] },
+      { group: "local", name: "llama.cpp-router", options: [{ value: "[\"local\",\"Qwen3.6.gguf\"]", name: "Qwen3.6" }] }
+    ]
+  }], "dsh")
+
+  assert.deepEqual(models.map((model) => [model.providerID, model.providerName, model.modelID, model.modelName, model.isDefault]), [
+    ["openrouter", "openrouter", "[\"openrouter\",\"z-ai/glm-5.3-flash\"]", "GLM 5.3 Flash", false],
+    ["local", "llama.cpp-router", "[\"local\",\"Qwen3.6.gguf\"]", "Qwen3.6", true]
+  ])
+})
+
 test("ACP model discovery keeps one warm catalog per adapter lifetime and explicit refresh uses a fresh technical session", async () => {
   const stateDirectory = await mkdtemp(path.join(tmpdir(), "harness-model-catalog-"))
   try {

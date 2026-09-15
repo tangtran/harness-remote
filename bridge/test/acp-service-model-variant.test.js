@@ -27,7 +27,7 @@ class RecordingAcp {
   async listSessions() { return [{ sessionId: "s1", cwd: "/repo", title: "S1", updatedAt: new Date().toISOString() }] }
   #configOptions() {
     return [
-      { id: "model", currentValue: this.currentModel, options: this.models.map((value) => ({ value })) },
+      { id: "model", currentValue: this.currentModel, options: this.groups ?? this.models.map((value) => ({ value })) },
       { id: "thinking", currentValue: "off", options: [{ value: "off" }, { value: "high" }] }
     ]
   }
@@ -47,6 +47,23 @@ class RecordingAcp {
 function configCalls(acp) {
   return acp.calls.filter(([method]) => method === "session/set_config_option").map(([, configId, value]) => `${configId}=${value}`)
 }
+
+test("setModel resolves a model picked from a grouped option to its opaque advertised value", async () => {
+  const acp = new RecordingAcp({ currentModel: "[\"local\",\"qwen\"]" })
+  acp.groups = [
+    { group: "local", name: "llama.cpp", options: [{ value: "[\"local\",\"qwen\"]" }] },
+    { group: "openrouter", name: "openrouter", options: [{ value: "[\"openrouter\",\"z-ai/glm-5.3-flash\"]" }] }
+  ]
+  const service = new AcpService(acp, {})
+  // The app addresses a model as `${providerID}/${modelID}`; for a grouped option that is `group/value`.
+  await service.setModel("s1", "openrouter/[\"openrouter\",\"z-ai/glm-5.3-flash\"]")
+  assert.deepEqual(configCalls(acp), ["model=[\"openrouter\",\"z-ai/glm-5.3-flash\"]"])
+  const listed = await service.models("s1")
+  assert.deepEqual(listed.map((model) => [model.group, model.value]), [
+    ["local", "[\"local\",\"qwen\"]"],
+    ["openrouter", "[\"openrouter\",\"z-ai/glm-5.3-flash\"]"]
+  ])
+})
 
 test("setModel applies the model before its harness-advertised variant", async () => {
   const acp = new RecordingAcp()

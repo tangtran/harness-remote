@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises"
 import path from "node:path"
-import { selectableAcpModelValue } from "./agent-model-catalog.js"
+import { configSelectCandidates, selectableAcpModelValue } from "./agent-model-catalog.js"
 import { TranscriptCache } from "./transcript-cache.js"
 import {
   listExtensionActions,
@@ -995,7 +995,7 @@ export class AcpService {
   async models(sessionID) {
     await this.#loadForConfigOptions(sessionID)
     const option = this.#configOptions.get(sessionID)?.find((item) => item.id === "model")
-    return option?.options?.map((candidate) => ({ ...candidate, currentValue: candidate.value === option.currentValue })) ?? []
+    return configSelectCandidates(option).map((candidate) => ({ ...candidate, currentValue: candidate.value === option.currentValue }))
   }
 
   async actions(sessionID) {
@@ -1148,9 +1148,10 @@ export class AcpService {
     const separator = model.indexOf("/")
     const providerID = separator > 0 ? model.slice(0, separator) : ""
     const modelID = separator > 0 ? model.slice(separator + 1) : model
-    const value = option?.options?.find((candidate) => candidate.value === model)?.value
-      ?? option?.options?.find((candidate) => candidate.value === modelID)?.value
-      ?? option?.options?.find((candidate) => selectableAcpModelValue(candidate.value, option, providerID) === modelID)?.value
+    const candidates = configSelectCandidates(option)
+    const value = candidates.find((candidate) => candidate.value === model)?.value
+      ?? candidates.find((candidate) => candidate.value === modelID)?.value
+      ?? candidates.find((candidate) => selectableAcpModelValue(candidate.value, option, providerID) === modelID)?.value
     if (!value) throw new Error(`Harness model is not available: ${model}`)
     // Continuing on the model the Session already holds is not a model change. Sending it anyway
     // made every prompt mutate the Session's configuration, which a harness is entitled to journal
@@ -1181,8 +1182,8 @@ export class AcpService {
     const value = typeof variant?.value === "string" ? variant.value : ""
     if (!configId || !value) return
     const option = this.#configOptions.get(sessionID)?.find((item) => item.id === configId)
-    if (!option?.options?.some((candidate) => candidate?.value === value)) {
-      const offered = (option?.options ?? []).map((candidate) => candidate?.value).filter(Boolean)
+    if (!configSelectCandidates(option).some((candidate) => candidate?.value === value)) {
+      const offered = configSelectCandidates(option).map((candidate) => candidate?.value).filter(Boolean)
       const error = new Error(`Harness model variant is not available: ${configId}=${value}${offered.length ? ` (this model offers ${offered.join(", ")})` : ""}`)
       error.code = "model_variant_unavailable"
       throw error
