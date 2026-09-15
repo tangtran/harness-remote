@@ -69,7 +69,14 @@ test("symlinked children cannot escape the configured root boundary", async () =
   const outside = await tempRoot("harness-project-outside-")
   try {
     await mkdir(path.join(outside, ".git"), { recursive: true })
-    await symlink(outside, path.join(root, "external"), "dir")
+    try {
+      await symlink(outside, path.join(root, "external"), "dir")
+    } catch (error) {
+      // A Windows directory symlink needs Developer Mode or elevation. A junction is the same
+      // escape attempt through a directory link any user can create, so the boundary is still tested.
+      if (process.platform !== "win32" || error?.code !== "EPERM") throw error
+      await symlink(outside, path.join(root, "external"), "junction")
+    }
     const projects = await discoverProjects({ machineID: "machine-1", roots: [root] })
     assert.equal(projects.some((project) => project.path === outside), false)
   } finally {
